@@ -2,25 +2,19 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: >-
   AWS CloudFormation EC2 Instance template for onboarding new client.
 Parameters:
-  KeyName:
-    Description: Name of an existing EC2 KeyPair to enable RDP Access
-    Type: 'AWS::EC2::KeyPair::KeyName'
-    ConstraintDescription: must be the name of an existing EC2 KeyPair.
-  InstanceName:
-    Description: Name of EC2 Instance
+  ClientName:
+    Description: Client Name
     Type: 'String'
-  InstanceType:
-    Description: WebServer EC2 instance type
+  TimeZone:
+    Description: Time Zone of client
     Type: String
-    Default: t2.small
+    Default: Eastern Standard Time
     AllowedValues:
-      - t1.micro
-      - t2.nano
-      - t2.micro
-      - t2.small
-      - t2.medium
-      - t2.large
-      - m1.small
+      - Pacific Standard Time
+      - Mountain Standard Time
+      - Central Standard Time
+      - Eastern Standard Time
+      - Atlantic Standard Time
     ConstraintDescription: must be a valid EC2 instance type.
 Resources:
   myssmdocument:
@@ -58,7 +52,7 @@ Resources:
   Instance: 
     Type: 'AWS::EC2::Instance'
     Properties: 
-      IamInstanceProfile: !Ref myInstanceProfile
+      IamInstanceProfile: SurePoint-EC2-Instance-Profile
       SsmAssociations:
         - DocumentName: !Ref myssmdocument
           AssociationParameters:
@@ -72,8 +66,8 @@ Resources:
               Value:
                 - 172.31.17.209
                 - 172.31.45.237
-      InstanceType: !Ref InstanceType
-      KeyName: !Ref KeyName
+      InstanceType: t2.medium
+      KeyName: Testing-SurePoint-Keypair
       ImageId: ami-017ab573701202ba1
       SecurityGroupIds: [sg-055c50c6eda5b13c5]
       # DisableApiTermination set to True before deployment on live
@@ -83,8 +77,10 @@ Resources:
           - ''
           - - |
               <script>
-            - >
-              tzutil /s "Pacific Standard Time" 
+            
+            - 'tzutil /s "'
+            - !Ref 'TimeZone'
+            - '" '
             
             - |+
 
@@ -105,12 +101,6 @@ Resources:
             - </powershell>
       Tags:
         - Key: Name
-          Value: !Ref InstanceName
+          Value: !Ref ClientName
         - Key: Client
           Value: surepoint
-  myInstanceProfile:
-    Type: 'AWS::IAM::InstanceProfile'
-    Properties:
-      Roles:
-        - TestingSurePointEC2SSMRole
-      InstanceProfileName: Dev-SurePointInstanceProfileEC2SSMRole
