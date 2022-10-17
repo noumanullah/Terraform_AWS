@@ -1,0 +1,37 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  AWS CloudFormation EC2 Instance template for onboarding new client.
+Parameters:
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable RDP Access
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  InstanceName:
+    Description: Name of EC2 Instance
+    Type: 'String'
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t2.small
+    AllowedValues:
+      - t1.micro
+      - t2.nano
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t2.large
+      - m1.small
+    ConstraintDescription: must be a valid EC2 instance type.
+Resources: 
+  Instance: 
+    Type: 'AWS::EC2::Instance'
+    Properties: 
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      ImageId: ami-0be386a6457ad7622
+      SecurityGroupIds: [sg-0ca232cec1bd4619f]
+      Tags:
+        - Key: Name
+          Value: !Ref InstanceName
+        - Key: Client
+          Value: surepoint

@@ -1,0 +1,116 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  AWS CloudFormation EC2 Instance template for onboarding new client.
+Parameters:
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable RDP Access
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  InstanceName:
+    Description: Name of EC2 Instance
+    Type: 'String'
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t2.small
+    AllowedValues:
+      - t1.micro
+      - t2.nano
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t2.large
+      - m1.small
+    ConstraintDescription: must be a valid EC2 instance type.
+Resources:
+  myssmdocument:
+    Type: 'AWS::SSM::Document'
+    Properties:
+      Content:
+        schemaVersion: '1.2'
+        description: Join instances to an AWS Directory Service domain.
+        parameters:
+          directoryId:
+            type: String
+            description: (Required) The ID of the AWS Directory Service directory.
+            default: 'd-9a671b1647'
+          directoryName:
+            type: String
+            description: >-
+              (Required) The name of the directory; for example,
+              test.example.com
+            default: 'example.cloud'
+          dnsIpAddresses:
+            type: StringList
+            default: [172.31.17.209,172.31.45.237]
+            description: >-
+              (Optional) The IP addresses of the DNS servers in the directory.
+              Required when DHCP is not configured. Learn more at
+              http://docs.aws.amazon.com/directoryservice/latest/simple-ad/join_get_dns_addresses.html
+            allowedPattern: >-
+              ((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)
+        runtimeConfig:
+          'aws:domainJoin':
+            properties:
+              directoryId: '{{ directoryId }}'
+              directoryName: '{{ directoryName }}'
+              dnsIpAddresses: '{{ dnsIpAddresses }}'
+  Instance: 
+    Type: 'AWS::EC2::Instance'
+    Properties: 
+      IamInstanceProfile: !Ref myInstanceProfile
+      SsmAssociations:
+        - DocumentName: !Ref myssmdocument
+          AssociationParameters:
+            - Key: directoryId
+              Value:
+                - d-9a671b1647
+            - Key: directoryName
+              Value:
+                - example.cloud
+            - Key: dnsIpAddresses
+              Value:
+                - 172.31.17.209
+                - 172.31.45.237
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      ImageId: ami-017ab573701202ba1
+      SecurityGroupIds: [sg-055c50c6eda5b13c5]
+      DisableApiTermination: true
+      UserData: !Base64 
+        'Fn::Join':
+          - ''
+          - - |
+              <script>
+            - 'echo Current date and time >> %SystemRoot%\Temp\test.log '
+            - 'echo %DATE% %TIME% >> %SystemRoot%\Temp\test.log'
+            - 'tzutil /s "Pacific Standard Time"'
+            - |+
+
+            - </script>
+      Tags:
+        - Key: Name
+          Value: !Ref InstanceName
+        - Key: Client
+          Value: surepoint
+  myInstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Roles:
+        - TestingSurePointEC2SSMRole
+      InstanceProfileName: SurePointInstanceProfileEC2SSMRole
+  SurePointInstanceProfileEC2SSMRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
+      RoleName: TestingSurePointEC2SSMRole
